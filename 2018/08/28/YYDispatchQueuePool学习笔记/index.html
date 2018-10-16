@@ -1,0 +1,182 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"><meta name="author" content="bangben"><meta name="renderer" content="webkit"><meta name="copyright" content="bangben"><meta name="keywords" content="邦ben"><meta name="description" content="null"><meta name="Cache-Control" content="no-cache"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>YYDispatchQueuePool学习笔记 · Mr.Long's Blog</title><link rel="stylesheet" href="/css/style.css?v=2018.7.9"><link rel="stylesheet" href="/css/animation.css?v=2018.7.9"><link rel="icon" href="/img/assets/favicon.ico"><link rel="stylesheet" href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css?version=1.5.6"><!-- scripts--><script>(function( w ){
+  "use strict";
+  // rel=preload support test
+  if( !w.loadCSS ){
+    w.loadCSS = function(){};
+  }
+  // define on the loadCSS obj
+  var rp = loadCSS.relpreload = {};
+  // rel=preload feature support test
+  // runs once and returns a function for compat purposes
+  rp.support = (function(){
+    var ret;
+    try {
+      ret = w.document.createElement( "link" ).relList.supports( "preload" );
+    } catch (e) {
+      ret = false;
+    }
+    return function(){
+      return ret;
+    };
+  })();
+
+  // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+  // then change that media back to its intended value on load
+  rp.bindMediaToggle = function( link ){
+    // remember existing media attr for ultimate state, or default to 'all'
+    var finalMedia = link.media || "all";
+
+    function enableStylesheet(){
+      link.media = finalMedia;
+    }
+
+    // bind load handlers to enable media
+    if( link.addEventListener ){
+      link.addEventListener( "load", enableStylesheet );
+    } else if( link.attachEvent ){
+      link.attachEvent( "onload", enableStylesheet );
+    }
+
+    // Set rel and non-applicable media type to start an async request
+    // note: timeout allows this to happen async to let rendering continue in IE
+    setTimeout(function(){
+      link.rel = "stylesheet";
+      link.media = "only x";
+    });
+    // also enable media after 3 seconds,
+    // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+    setTimeout( enableStylesheet, 3000 );
+  };
+
+  // loop through link elements in DOM
+  rp.poly = function(){
+    // double check this to prevent external calls from running
+    if( rp.support() ){
+      return;
+    }
+    var links = w.document.getElementsByTagName( "link" );
+    for( var i = 0; i < links.length; i++ ){
+      var link = links[ i ];
+      // qualify links to those with rel=preload and as=style attrs
+      if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+        // prevent rerunning on link
+        link.setAttribute( "data-loadcss", true );
+        // bind listeners to toggle media back
+        rp.bindMediaToggle( link );
+      }
+    }
+  };
+
+  // if unsupported, run the polyfill
+  if( !rp.support() ){
+    // run once at least
+    rp.poly();
+
+    // rerun poly on an interval until onload
+    var run = w.setInterval( rp.poly, 500 );
+    if( w.addEventListener ){
+      w.addEventListener( "load", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    } else if( w.attachEvent ){
+      w.attachEvent( "onload", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    }
+  }
+
+
+  // commonjs
+  if( typeof exports !== "undefined" ){
+    exports.loadCSS = loadCSS;
+  }
+  else {
+    w.loadCSS = loadCSS;
+  }
+}( typeof global !== "undefined" ? global : this ) );</script><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" defer></script><script src="/js/main.js?v=2018.7.9" defer></script><!-- fancybox--><link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script><!-- busuanzi--><script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script></head><body><section class="profile-close" id="cxo-profile"><div class="profile-avatar"><i class="fa fa-caret-left"></i><img src="/img/assets/cat.png"></div><!--.profile-saying
+  i.fa.fa-comment
+  .saying--><div class="cxo-profile-inner"><div class="profile-name">longlongyu</div><div class="profile-signature">for me</div><div class="friends"><div>FRIENDS</div><span><a href="//github.com/Longlongyu" target="_black">friendA</a></span><span><a href="//github.com/" target="_black">friendB</a></span><span><a href="//github.com/" target="_black">friendC</a></span></div><div class="read-progress"></div></div></section><header id="cxo-intro" style="height: 70vh;background-image: url(/img/intro/index-bg.png);"><nav id="cxo-intro-nav"><section><div class="intro-nav-title"><a href="/">Mr.Long's Blog</a></div><div class="intro-nav-label-box"><a href="/">Home</a><a href="/about/">About</a><a href="/archives/">Archives</a><a href="/tags/">Tags</a></div><i class="fa fa-bars intro-nav-menu"><div class="intro-nav-drop"><a href="/">Home</a><a href="/about/">About</a><a href="/archives/">Archives</a><a href="/tags/">Tags</a></div></i><div class="clear"></div></section></nav><h1 class="post-title">YYDispatchQueuePool学习笔记</h1><div class="post-intros"><div class="post-intro-meta"><span class="post-intro-time"><i class="post-intro-calendar fa fa-calendar"></i><span>2018-08-28</span></span></div></div></header><article class="cxo-up" id="cxo-content-outer"><section id="cxo-content-inner"><article class="article-entry" id="post"><h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>主要还是学习做笔记，并且锻炼下写文章能力，以及挽回我的flag T T，如有错，请评论指正</p>
+<p>ibireme大佬在<a href="https://blog.ibireme.com/2015/11/12/smooth_user_interfaces_for_ios/" target="_blank" rel="noopener">iOS 保持界面流畅的技巧</a> 原文：</p>
+<blockquote>
+<p>使用 concurrent queue 时不可避免会遇到这种问题，但使用 serial queue 又不能充分利用多核 CPU 的资源。我写了一个简单的工具 YYDispatchQueuePool，为不同优先级创建和 CPU 数量相同的 serial queue，每次从 pool 中获取 queue 时，会轮询返回其中一个 queue。我把 App 内所有异步操作，包括图像解码、对象释放、异步绘制等，都按优先级不同放入了全局的 serial queue 中执行，这样尽量避免了过多线程导致的性能问题。</p>
+</blockquote>
+<p>作为YYKit的其中一个组件，也可以说相当精简，因此学习一下<br>在并发编程过程中会遇到两种任务：</p>
+<ul>
+<li>CPU密集型task</li>
+<li>IO密集型task</li>
+</ul>
+<p>一般情况下，都是IO密集型的比较多，因此都会产生比较多的CPU空闲时间，而且现在多核的CPU可以实现并行的任务调度，如果不使用起来就会很浪费。</p>
+<p>那这里为什么会提及的CPU密集型的，就是如果像上面提及的，在并发的过程中，创建过多的线程，导致线程的处理逼近CPU的处理的话，还是会导致性能下降。CPU通过时间片轮转等调度算法，实现伪并行（多核下还是能实现真并行）。</p>
+<p>因此作者提出，通过自行控制queue的数量，将线程数控制到一个合理的数量（这里的合理数量就是，每个优先级的线程数保持和CPU核心数相同）</p>
+<h1 id="调用方式"><a href="#调用方式" class="headerlink" title="调用方式"></a>调用方式</h1><blockquote>
+<p>首先先看调用方式简单了解</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">YYDispatchQueuePool *pool = [YYDispatchQueuePool defaultPoolForQOS:NSQualityOfServiceUtility];</span><br><span class="line">dispatch_queue_t queue = [pool queue];</span><br><span class="line">// 使用 dispatch_queue_t</span><br><span class="line">dispatch_queue_t queue = [pool queue];</span><br><span class="line">dispatch_async(queue, ^&#123;</span><br><span class="line">    NSLog(@&quot;测试&quot;);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<h3 id="自定义创建"><a href="#自定义创建" class="headerlink" title="自定义创建"></a>自定义创建</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> 创建一个dispatch_queuet_t的pool对象</span><br><span class="line"> @param name       队列池的名字</span><br><span class="line"> @param queueCount 队列的数量控制，最多32</span><br><span class="line"> @param qos        队列的优先级</span><br><span class="line"> */</span><br><span class="line">- (instancetype)initWithName:(NSString *)name </span><br><span class="line">                  queueCount:(NSUInteger)queueCount</span><br><span class="line">                         qos:(NSQualityOfService)qos;</span><br></pre></td></tr></table></figure>
+<h3 id="只通过优先级获取（推荐使用）"><a href="#只通过优先级获取（推荐使用）" class="headerlink" title="只通过优先级获取（推荐使用）"></a>只通过优先级获取（推荐使用）</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> 获取默认创建的pool对象</span><br><span class="line"> @param qos        队列的优先级</span><br><span class="line"> */</span><br><span class="line">+ (instancetype)defaultPoolForQOS:(NSQualityOfService)qos;</span><br></pre></td></tr></table></figure>
+<p>为什么会推荐这个呢？这里主要就是已经帮你创建好对应的线程控制，如果你没什么特殊需求，直接使用即可。</p>
+<h1 id="实现细节"><a href="#实现细节" class="headerlink" title="实现细节"></a>实现细节</h1><h2 id="QoS（Quality-of-Service，服务质量"><a href="#QoS（Quality-of-Service，服务质量" class="headerlink" title="QoS（Quality of Service，服务质量)"></a>QoS（Quality of Service，服务质量)</h2><blockquote>
+<p>用来代表服务的优先级</p>
+</blockquote>
+<p>iOS8之前，优先级各有各的方式</p>
+<p>NSOperation 和 NSThread 都通过 threadPriority 来指定优先级</p>
+<p>GCD也只能设置</p>
+<ul>
+<li>DISPATCH_QUEUE_PRIORITY_HIGH</li>
+<li>DISPATCH_QUEUE_PRIORITY_LOW</li>
+<li>DISPATCH_QUEUE_PRIORITY_BACKGROUND</li>
+<li>DISPATCH_QUEUE_PRIORITY_DEFAULT</li>
+</ul>
+<p>在iOS8之后<br>统一为5个等级</p>
+<ul>
+<li>NSQualityOfServiceUserInteractive：最高优先级, 用于处理 UI 相关的任务</li>
+<li>NSQualityOfServiceUserInitiated：次高优先级, 用于执行需要立即返回的任务</li>
+<li>NSQualityOfServiceUtility：普通优先级，主要用于不需要立即返回的任务</li>
+<li>NSQualityOfServiceBackground：后台优先级，用于处理一些用户不会感知的任务</li>
+<li>NSQualityOfServiceDefault：默认优先级，当没有设置优先级的时候，线程默认优先级</li>
+</ul>
+<p>GCD的则提供对应的</p>
+<ul>
+<li>QOS_CLASS_USER_INTERACTIVE</li>
+<li>QOS_CLASS_USER_INITIATED</li>
+<li>QOS_CLASS_UTILITY</li>
+<li>QOS_CLASS_BACKGROUND</li>
+<li>QOS_CLASS_DEFAULT</li>
+<li>QOS_CLASS_UNSPECIFIED</li>
+</ul>
+<h2 id="创建Context"><a href="#创建Context" class="headerlink" title="创建Context"></a>创建Context</h2><p>Context一个结构体，用于记录上下文数据</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    const char *name;</span><br><span class="line">    void **queues;</span><br><span class="line">    uint32_t queueCount;</span><br><span class="line">    int32_t counter; // 计数器</span><br><span class="line">&#125; YYDispatchContext;</span><br></pre></td></tr></table></figure>
+<p>需要关注的是计数器，这个计数器是干嘛的？</p>
+<p>一个context有n个queue，那我每次返回哪一个呢?</p>
+<p>这里的逻辑是：</p>
+<p>我轮着返回给你啊~</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这个[pool queue]，就是你主要使用的方法，获取一个可以用的队列防止任务</span></span><br><span class="line">- (<span class="built_in">dispatch_queue_t</span>)queue &#123;</span><br><span class="line">    <span class="keyword">return</span> YYDispatchContextGetQueue(_context);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="built_in">dispatch_queue_t</span> YYDispatchContextGetQueue(YYDispatchContext *context) &#123;</span><br><span class="line">    <span class="comment">// 计算器++ (调用一次，我就拿下一个~)</span></span><br><span class="line">    uint32_t counter = (uint32_t)OSAtomicIncrement32(&amp;context-&gt;counter);</span><br><span class="line">    <span class="comment">// 取出队列</span></span><br><span class="line">    <span class="keyword">void</span> *queue = context-&gt;queues[counter % context-&gt;queueCount];</span><br><span class="line">    <span class="comment">// 返回队列</span></span><br><span class="line">    <span class="keyword">return</span> (__bridge <span class="built_in">dispatch_queue_t</span>)(queue);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Context创建代码注释</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> YYDispatchContext *YYDispatchContextCreate(<span class="keyword">const</span> <span class="keyword">char</span> *name,</span><br><span class="line">                                                 uint32_t queueCount,</span><br><span class="line">                                                 <span class="built_in">NSQualityOfService</span> qos) &#123;</span><br><span class="line">    <span class="comment">// 创建上下文，用于记录</span></span><br><span class="line">    YYDispatchContext *context = calloc(<span class="number">1</span>, <span class="keyword">sizeof</span>(YYDispatchContext));</span><br><span class="line">    <span class="keyword">if</span> (!context) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// 创建指针数组</span></span><br><span class="line">    context-&gt;queues =  calloc(queueCount, <span class="keyword">sizeof</span>(<span class="keyword">void</span> *));</span><br><span class="line">    <span class="keyword">if</span> (!context-&gt;queues) &#123;</span><br><span class="line">        free(context);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> ([<span class="built_in">UIDevice</span> currentDevice].systemVersion.floatValue &gt;= <span class="number">8.0</span>) &#123;</span><br><span class="line">        <span class="comment">// 这个方法设置Qos只在8.0之后进行统一，不过还是需要转换一下枚举 </span></span><br><span class="line">        dispatch_qos_class_t qosClass = <span class="built_in">NSQualityOfServiceToQOSClass</span>(qos);</span><br><span class="line">        <span class="comment">// 根据队列的数量进行创建</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="built_in">NSUInteger</span> i = <span class="number">0</span>; i &lt; queueCount; i++) &#123;</span><br><span class="line">            dispatch_queue_attr_t attr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, qosClass, <span class="number">0</span>);</span><br><span class="line">            <span class="built_in">dispatch_queue_t</span> queue = dispatch_queue_create(name, attr);</span><br><span class="line">            context-&gt;queues[i] = (__bridge_retained <span class="keyword">void</span> *)(queue);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 获取Qos和GCD的对应关系</span></span><br><span class="line">        <span class="keyword">long</span> identifier = <span class="built_in">NSQualityOfServiceToDispatchPriority</span>(qos);</span><br><span class="line">        <span class="keyword">for</span> (<span class="built_in">NSUInteger</span> i = <span class="number">0</span>; i &lt; queueCount; i++) &#123;</span><br><span class="line">            <span class="comment">// 通过和全局队列的优先级设置对应的方式来设置</span></span><br><span class="line">            <span class="built_in">dispatch_queue_t</span> queue = dispatch_queue_create(name, DISPATCH_QUEUE_SERIAL);</span><br><span class="line">            <span class="comment">// queue的优先级和dispatch_get_global_queue(identifier, 0)优先级一致</span></span><br><span class="line">            dispatch_set_target_queue(queue, dispatch_get_global_queue(identifier, <span class="number">0</span>));</span><br><span class="line">            context-&gt;queues[i] = (__bridge_retained <span class="keyword">void</span> *)(queue);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    context-&gt;queueCount = queueCount;</span><br><span class="line">    <span class="keyword">if</span> (name) &#123;</span><br><span class="line">         context-&gt;name = strdup(name);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> context;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="通过Qos进行获取queue"><a href="#通过Qos进行获取queue" class="headerlink" title="通过Qos进行获取queue"></a>通过Qos进行获取queue</h2><blockquote>
+<p>为什么推荐通过Qos直接获取队列？当然是因为提供的便利控制数量的方法</p>
+</blockquote>
+<p>通过 <code>YYDispatchContextGetForQOS</code> 方法去获取一个文</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">+ (<span class="keyword">instancetype</span>)defaultPoolForQOS:(<span class="built_in">NSQualityOfService</span>)qos &#123;</span><br><span class="line">    <span class="comment">// 创建数量为5的context数组，为啥是5？因为有5个优先级~</span></span><br><span class="line">    <span class="comment">// 一人一个坑</span></span><br><span class="line">    <span class="keyword">static</span> YYDispatchContext *context[<span class="number">5</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">switch</span> (qos) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="built_in">NSQualityOfServiceUserInteractive</span>: &#123;</span><br><span class="line">            <span class="keyword">static</span> <span class="built_in">dispatch_once_t</span> onceToken;</span><br><span class="line">            <span class="built_in">dispatch_once</span>(&amp;onceToken, ^&#123;</span><br><span class="line">                <span class="comment">// activeProcessorCount 代表进程中激活的核心数量</span></span><br><span class="line">                <span class="keyword">int</span> count = (<span class="keyword">int</span>)[<span class="built_in">NSProcessInfo</span> processInfo].activeProcessorCount;</span><br><span class="line">                count = count &lt; <span class="number">1</span> ? <span class="number">1</span> : count &gt; MAX_QUEUE_COUNT ? MAX_QUEUE_COUNT : count;</span><br><span class="line">                <span class="comment">// 这里有5个context,按顺序存入即可</span></span><br><span class="line">                context[<span class="number">0</span>] = YYDispatchContextCreate(<span class="string">"com.ibireme.yykit.user-interactive"</span>, count, qos);</span><br><span class="line">            &#125;);</span><br><span class="line">            <span class="keyword">return</span> context[<span class="number">0</span>];</span><br><span class="line">        &#125; <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> <span class="built_in">NSQualityOfServiceUserInitiated</span>: </span><br><span class="line">        <span class="keyword">case</span> <span class="built_in">NSQualityOfServiceUtility</span>:</span><br><span class="line">        <span class="comment">//...</span></span><br></pre></td></tr></table></figure>
+<p>从下图可以看出，不断的进行塞入任务，一个优先级只会创建四条线程（因为只有创建了4条serial queue）</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/4/12/162b794736f29684?w=1433&amp;h=458&amp;f=png&amp;s=200179" alt=""></p>
+<p>以此类推，5个优先级，最多就是20条线程，控制住了线程原地爆炸的情况</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>大体上原理，就是通过创建不同优先级的context，context中创建有限数量的queue。</p>
+<p>在使用的时候，通过优先级获取不同的context，然后轮着返回不同的queue让你换着用，你就可以一定程度上实现并行队列，并且控制线程数量。</p>
+<p>所以这个库来说，可以应用的范围也挺广的，在你频繁进行操作线程的地方，你都可以使用，如果你觉得自动创建的queue数量太少，那你自定义吧~</p>
+<h2 id="吐槽"><a href="#吐槽" class="headerlink" title="吐槽"></a>吐槽</h2><p>为什么掘金不支持粘贴图片上传！！！！！！！！！！</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blog.ibireme.com/2015/11/12/smooth_user_interfaces_for_ios/" target="_blank" rel="noopener">iOS 保持界面流畅的技巧</a></p>
+<p><a href="http://xuyafei.cn/post/draft/ios-thread" target="_blank" rel="noopener">iOS中的多线程</a></p>
+<p><a href="https://www.jianshu.com/p/7f39f60e5548" target="_blank" rel="noopener">YYDispatchQueuePool学习</a></p>
+</article><!-- lincense--><div class="license-wrapper"><p> <span>Author:  </span><a href="http://linwenbang.github.io">bangben</a></p><p> <span>Link:  </span><a href="http://linwenbang.github.io/2018/08/28/YYDispatchQueuePool学习笔记/">http://linwenbang.github.io/2018/08/28/YYDispatchQueuePool学习笔记/</a></p><p> <span>Copyright:  </span><span>All articles in this blog are licensed under <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/3.0">CC BY-NC-SA 3.0</a> unless stating additionally.</span></p></div><div class="post-paginator"><a class="nextSlogan" href="/2018/08/28/YYCache深入学习/" title="YYCache深入学习"><span>NextPost ></span><br><span class="nextTitle">YYCache深入学习</span></a><div class="clear"></div></div><div id="comment"><div id="disqus_thread"></div><script>var unused = null;
+var disqus_config = function () {
+  this.page.url = 'http://linwenbang.github.io/2018/08/28/YYDispatchQueuePool学习笔记/';
+  this.page.identifier = '2018/08/28/YYDispatchQueuePool学习笔记/';
+  this.page.title = 'YYDispatchQueuePool学习笔记';
+}
+var d = document, s = d.createElement('script');
+s.src = "https://" + 'bangben-1' +".disqus.com/embed.js";
+s.setAttribute('data-timestamp', '' + +new Date());
+(d.head || d.body).appendChild(s);</script></div></section></article><footer id="cxo-footer-outer"><div id="cxo-footer-inner"><p class="footer-container"><span>Site by </span><a href="http://hexo.io"><span>Hexo</span></a><span> | theme </span><a href="https://github.com/Longlongyu/hexo-theme-Cxo"><span>Cxo</span></a></p><i class="fa fa-user"> </i><span id="busuanzi_value_site_uv"></span><span> | </span><i class="fa fa-eye"> </i><span id="busuanzi_value_site_pv"></span></div></footer><!-- catelog--><div class="toc-wrapper" style="top: 70vh;"><div class="toc-catalog"><i class="fa fa-list"> </i><span>CATALOG</span></div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#背景"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#调用方式"><span class="toc-number">2.</span> <span class="toc-text">调用方式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#自定义创建"><span class="toc-number">2.0.1.</span> <span class="toc-text">自定义创建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#只通过优先级获取（推荐使用）"><span class="toc-number">2.0.2.</span> <span class="toc-text">只通过优先级获取（推荐使用）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#实现细节"><span class="toc-number">3.</span> <span class="toc-text">实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#QoS（Quality-of-Service，服务质量"><span class="toc-number">3.1.</span> <span class="toc-text">QoS（Quality of Service，服务质量)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#创建Context"><span class="toc-number">3.2.</span> <span class="toc-text">创建Context</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#通过Qos进行获取queue"><span class="toc-number">3.3.</span> <span class="toc-text">通过Qos进行获取queue</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-number">3.4.</span> <span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#吐槽"><span class="toc-number">3.5.</span> <span class="toc-text">吐槽</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#参考"><span class="toc-number">3.6.</span> <span class="toc-text">参考</span></a></li></ol></li></ol></div><!-- top--><i class="fa fa-arrow-up close" id="go-up" aria-hidden="true"></i></body></html>

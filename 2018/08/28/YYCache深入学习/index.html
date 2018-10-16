@@ -1,0 +1,204 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"><meta name="author" content="bangben"><meta name="renderer" content="webkit"><meta name="copyright" content="bangben"><meta name="keywords" content="邦ben"><meta name="description" content="null"><meta name="Cache-Control" content="no-cache"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>YYCache深入学习 · Mr.Long's Blog</title><link rel="stylesheet" href="/css/style.css?v=2018.7.9"><link rel="stylesheet" href="/css/animation.css?v=2018.7.9"><link rel="icon" href="/img/assets/favicon.ico"><link rel="stylesheet" href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css?version=1.5.6"><!-- scripts--><script>(function( w ){
+  "use strict";
+  // rel=preload support test
+  if( !w.loadCSS ){
+    w.loadCSS = function(){};
+  }
+  // define on the loadCSS obj
+  var rp = loadCSS.relpreload = {};
+  // rel=preload feature support test
+  // runs once and returns a function for compat purposes
+  rp.support = (function(){
+    var ret;
+    try {
+      ret = w.document.createElement( "link" ).relList.supports( "preload" );
+    } catch (e) {
+      ret = false;
+    }
+    return function(){
+      return ret;
+    };
+  })();
+
+  // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+  // then change that media back to its intended value on load
+  rp.bindMediaToggle = function( link ){
+    // remember existing media attr for ultimate state, or default to 'all'
+    var finalMedia = link.media || "all";
+
+    function enableStylesheet(){
+      link.media = finalMedia;
+    }
+
+    // bind load handlers to enable media
+    if( link.addEventListener ){
+      link.addEventListener( "load", enableStylesheet );
+    } else if( link.attachEvent ){
+      link.attachEvent( "onload", enableStylesheet );
+    }
+
+    // Set rel and non-applicable media type to start an async request
+    // note: timeout allows this to happen async to let rendering continue in IE
+    setTimeout(function(){
+      link.rel = "stylesheet";
+      link.media = "only x";
+    });
+    // also enable media after 3 seconds,
+    // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+    setTimeout( enableStylesheet, 3000 );
+  };
+
+  // loop through link elements in DOM
+  rp.poly = function(){
+    // double check this to prevent external calls from running
+    if( rp.support() ){
+      return;
+    }
+    var links = w.document.getElementsByTagName( "link" );
+    for( var i = 0; i < links.length; i++ ){
+      var link = links[ i ];
+      // qualify links to those with rel=preload and as=style attrs
+      if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+        // prevent rerunning on link
+        link.setAttribute( "data-loadcss", true );
+        // bind listeners to toggle media back
+        rp.bindMediaToggle( link );
+      }
+    }
+  };
+
+  // if unsupported, run the polyfill
+  if( !rp.support() ){
+    // run once at least
+    rp.poly();
+
+    // rerun poly on an interval until onload
+    var run = w.setInterval( rp.poly, 500 );
+    if( w.addEventListener ){
+      w.addEventListener( "load", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    } else if( w.attachEvent ){
+      w.attachEvent( "onload", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    }
+  }
+
+
+  // commonjs
+  if( typeof exports !== "undefined" ){
+    exports.loadCSS = loadCSS;
+  }
+  else {
+    w.loadCSS = loadCSS;
+  }
+}( typeof global !== "undefined" ? global : this ) );</script><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" defer></script><script src="/js/main.js?v=2018.7.9" defer></script><!-- fancybox--><link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script><!-- busuanzi--><script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script></head><body><section class="profile-close" id="cxo-profile"><div class="profile-avatar"><i class="fa fa-caret-left"></i><img src="/img/assets/cat.png"></div><!--.profile-saying
+  i.fa.fa-comment
+  .saying--><div class="cxo-profile-inner"><div class="profile-name">longlongyu</div><div class="profile-signature">for me</div><div class="friends"><div>FRIENDS</div><span><a href="//github.com/Longlongyu" target="_black">friendA</a></span><span><a href="//github.com/" target="_black">friendB</a></span><span><a href="//github.com/" target="_black">friendC</a></span></div><div class="read-progress"></div></div></section><header id="cxo-intro" style="height: 70vh;background-image: url(/img/intro/index-bg.png);"><nav id="cxo-intro-nav"><section><div class="intro-nav-title"><a href="/">Mr.Long's Blog</a></div><div class="intro-nav-label-box"><a href="/">Home</a><a href="/about/">About</a><a href="/archives/">Archives</a><a href="/tags/">Tags</a></div><i class="fa fa-bars intro-nav-menu"><div class="intro-nav-drop"><a href="/">Home</a><a href="/about/">About</a><a href="/archives/">Archives</a><a href="/tags/">Tags</a></div></i><div class="clear"></div></section></nav><h1 class="post-title">YYCache深入学习</h1><div class="post-intros"><div class="post-intro-meta"><span class="post-intro-time"><i class="post-intro-calendar fa fa-calendar"></i><span>2018-08-28</span></span></div></div></header><article class="cxo-up" id="cxo-content-outer"><section id="cxo-content-inner"><article class="article-entry" id="post"><blockquote>
+<p>深知，源码还是一点点读，加点读书笔记，才可以深入挖掘，因此还是觉得每次读源码都记录一番，无论好坏，如有写错，请斧正</p>
+</blockquote>
+<h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>YYCahce 是作为 ibireme 大神开源的一个YYkit组件库中的一部分，YYCache提供了内存缓存，和持久性的硬盘缓存。</p>
+<h3 id="一个合理缓存应该有的设计"><a href="#一个合理缓存应该有的设计" class="headerlink" title="一个合理缓存应该有的设计"></a>一个合理缓存应该有的设计</h3><ul>
+<li>合理的增删改查接口</li>
+<li>高速缓存，提高常用缓存的返回性能和效率</li>
+<li>低速缓存，磁盘大文件缓存</li>
+<li>良好缓存限制策略</li>
+<li>高性能，线程安全</li>
+</ul>
+<h3 id="基本设计思路"><a href="#基本设计思路" class="headerlink" title="基本设计思路"></a>基本设计思路</h3><p>YYCache 提供对外的整合接口，YYMemoryCache 提供内存存储缓存，通过lru算法进行处理，YYDiskCache提供file和sqlite3的两种持久化存储方式</p>
+<h4 id="YYMemoryCache"><a href="#YYMemoryCache" class="headerlink" title="YYMemoryCache"></a>YYMemoryCache</h4><p>YYMemoryCahce 作为一个内存缓存，提供高速缓存，并且因为内存有限，需要进行一定的限制</p>
+<ol>
+<li><p>线程安全</p>
+<p> 在频率高的并发数据操作中，必须保证线程安全，不然拿到的数据不符合预期，或者导致读写冲突<br> 在YYMemoryCache中，采用的pthread_mutex加锁</p>
+<p> pthread_mutex 定义了一组跨平台的线程相关的 API，pthread_mutex 表示互斥锁。互斥锁的实现原理与信号量非常相似，不是使用忙等，而是阻塞线程并睡眠，需要进行上下文切换。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 主要使用api	</span><br><span class="line">pthread_mutex_lock(&amp;mutex); // 申请锁  </span><br><span class="line">// 临界区</span><br><span class="line">pthread_mutex_unlock(&amp;mutex); // 释放锁</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<pre><code>pthread_mutex支持递归锁，递归锁，就是在内部加锁调用的时候，递归了自身，这样子，会导致死锁。
+
+- pthread_mutex则支持递归处理 attr PTHREAD_MUTEX_RECURSIVE
+
+- memory中使用pthread，在循环释放的时候，通过pthread_mutex_trylock实现简单的自旋锁
+
+&gt; 原文：OSSpinLock 和 dispatch_semaphore 都不会产生特别明显的死锁，所以我也无法确定用 dispatch_semaphore 代替 OSSpinLock 是否正确。能够肯定的是，用 pthread_mutex 是安全的。
+</code></pre><ol start="2">
+<li>LRU</li>
+</ol>
+<p>最近使用优先，也就是认为，最近使用的，最大可能性会再次用到<br>里面实现用到一个双向链表的结构进行处理，使用到的就会被移动到表头<br>在删除释放的时候，就会从队尾进行删除释放</p>
+<ol start="3">
+<li>键值对存储操作</li>
+</ol>
+<p>通过创建链表节点node，进行间接操作数据</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#pragma mark - _YYLinkedMapNode</span></span><br><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">_YYLinkedMapNode</span> : <span class="title">NSObject</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 类似C中的private_extern，使用@private的话，限制太大，@package在类的镜像外进行引用就会报错</span></span><br><span class="line">    <span class="comment">// 使用@public @protect等的话，就没什么限制的</span></span><br><span class="line">    <span class="comment">// 目的是，限制在本文件中使用</span></span><br><span class="line">    <span class="keyword">@package</span></span><br><span class="line">    __<span class="keyword">unsafe_unretained</span> _YYLinkedMapNode *_prev; <span class="comment">// 通过dic进行持有</span></span><br><span class="line">    __<span class="keyword">unsafe_unretained</span> _YYLinkedMapNode *_next; <span class="comment">// 通过dic进行持有</span></span><br><span class="line">    <span class="keyword">id</span> _key;</span><br><span class="line">    <span class="keyword">id</span> _value;</span><br><span class="line">    <span class="built_in">NSUInteger</span> _cost;</span><br><span class="line">    <span class="built_in">NSTimeInterval</span> _time;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>限制策略</li>
+</ol>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 限制条件有3个，age cost count ，一般情况下默认都不做限制</span></span><br><span class="line"><span class="comment">/// 个数限制</span></span><br><span class="line"><span class="keyword">@property</span> <span class="built_in">NSUInteger</span> countLimit;</span><br><span class="line"><span class="comment">/// 过期时间</span></span><br><span class="line"><span class="keyword">@property</span> <span class="built_in">NSTimeInterval</span> ageLimit;</span><br><span class="line"><span class="comment">/// 存储消耗限制，setObject的时候时候把内存大小的存进去</span></span><br><span class="line"><span class="keyword">@property</span> <span class="built_in">NSUInteger</span> costLimit;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> <span class="built_in">BOOL</span> shouldRemoveAllObjectsWhenEnteringBackground; <span class="comment">// 进入后台检查限制删除缓存，默认YES</span></span><br><span class="line"><span class="keyword">@property</span> <span class="built_in">BOOL</span> shouldRemoveAllObjectsOnMemoryWarning; <span class="comment">// 收到内存警告的时候</span></span><br></pre></td></tr></table></figure>
+<p>MemoryCache中使用的LRU的的算法进行删除缓存，当超过一定的限制的时候，会进行循环清理，也就是说，memory里面的东西并不是存进去就会在app的生命周期中一直存在的，可能会被释放掉。因此外部在使用的时候，需要判空处理的，如果为nil，则认为缓存已经失效，需要重新更新。</p>
+<p>因此，YYMemoryCahce并不是数据在app的生命周期会被一直保留的，所以，在使用YYCahce最外层接口的时候，YYCache是会通过YYMemoryCache提供高速缓存，同时存入到低速缓存中。</p>
+<p>获取的时候，YYMemoryCache获取不到，则会询问YYDiskCache。</p>
+<ol start="5">
+<li>某些小技巧，用于提供性能</li>
+</ol>
+<p>会在一段时间，自行检查是否超过限制策略，超过则循环释放。<br>YYMemoryCache默认在进入后台的时候会进行检查。<br>因为一次释放太多，会导致资源消耗过大，因此，通过dispatch_aync block的方式，放到后台线程释放</p>
+<hr>
+<h4 id="YYDiskCache"><a href="#YYDiskCache" class="headerlink" title="YYDiskCache"></a>YYDiskCache</h4><ol>
+<li>线程安全</li>
+</ol>
+<p>disk中使用dispatch_semaphore信号量进行处理</p>
+<p>dispatch_semaphore 是信号量，但当信号总量设为 1 时也可以当作锁来。在没有等待情况出现时，它的性能比 pthread_mutex 还要高，但一旦有等待情况出现时，性能就会下降许多。相对于 OSSpinLock 来说，它的优势在于等待时不会消耗 CPU 资源。对磁盘缓存来说，它比较合适。</p>
+<p>dispatch_semaphore是属于闲等待，CPU不会消耗，因此，在做磁盘缓存的时候，用时较长，需要等待的话，会比较节省资源</p>
+<ul>
+<li>OSSpinLock 自旋锁，不安全，所以使用了dispatch_semaphore进行处理，因为大文件，需要等待的情况较多</li>
+</ul>
+<ol start="2">
+<li>大文件处理</li>
+</ol>
+<ul>
+<li>YYKVStorage 通过key value的一个封装，实现增删改查</li>
+<li><p>YYKVStorage 实现细节:</p>
+<ul>
+<li><p>提供对应的sqlite3的db增删改查的接口，在操作的过程都做了防御式的操作</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="built_in">BOOL</span>)_dbClose &#123;</span><br><span class="line">    <span class="comment">// 关闭数据库</span></span><br><span class="line">    <span class="keyword">if</span> (!_db) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">YES</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">int</span> result = <span class="number">0</span>;</span><br><span class="line">    <span class="built_in">BOOL</span> retry = <span class="literal">NO</span>;</span><br><span class="line">    <span class="built_in">BOOL</span> stmtFinalized = <span class="literal">NO</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (_dbStmtCache) &#123;</span><br><span class="line">        _dbStmtCache = <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        retry = <span class="literal">NO</span>;</span><br><span class="line">        result = sqlite3_close(_db);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> (result == SQLITE_BUSY || result == SQLITE_LOCKED) &#123;</span><br><span class="line">            <span class="comment">// 如果sqlite被占用，那进行stmt的析构操作，让其释放资源</span></span><br><span class="line">            <span class="comment">// 在重新试一次</span></span><br><span class="line">            <span class="keyword">if</span> (!stmtFinalized) &#123;</span><br><span class="line">                stmtFinalized = <span class="literal">YES</span>; <span class="comment">//析构</span></span><br><span class="line">                sqlite3_stmt *stmt;</span><br><span class="line">                <span class="comment">// sqlite3_stmt 是一种辅助数据结构，用于操作二进制数据</span></span><br><span class="line">                <span class="comment">// 循环释放所有的sqlite stmt</span></span><br><span class="line">                <span class="keyword">while</span> ((stmt = sqlite3_next_stmt(_db, <span class="literal">nil</span>))) &#123;</span><br><span class="line">                    sqlite3_finalize(stmt); <span class="comment">//析构 所有的sqlite stmt的辅助</span></span><br><span class="line">                    retry = <span class="literal">YES</span>; <span class="comment">// 然后重试，</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (result != SQLITE_OK) &#123;</span><br><span class="line">            <span class="comment">// 关闭失败</span></span><br><span class="line">            <span class="comment">// 输出 错误日志</span></span><br><span class="line">            <span class="built_in">NSLog</span>(<span class="string">@"关闭失败"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">    &#125; <span class="keyword">while</span> (retry);</span><br><span class="line">    </span><br><span class="line">    _db = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">YES</span>;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- (<span class="built_in">BOOL</span>)_dbCheck &#123;</span><br><span class="line">    <span class="keyword">if</span> (_db) &#123;</span><br><span class="line">        <span class="comment">// 如果重试错误的次数小于限定次数，并且大于最小重试时间，则重新进行打开和初始化检查</span></span><br><span class="line">        <span class="keyword">if</span> (_dbOpenErrorCount &lt; kMaxErrorRetryCount &amp;&amp;</span><br><span class="line">            <span class="built_in">CACurrentMediaTime</span>() - _dbLastOpenErrorTime &gt; kMinRetryTimeInterval) &#123;</span><br><span class="line">            <span class="keyword">return</span> [<span class="keyword">self</span> _dbOpen] &amp;&amp; [<span class="keyword">self</span> _dbInitialize];</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NO</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">YES</span>; <span class="comment">// 正常</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>对sqlite的stmt也做了缓存，加速其性能</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">// 获取缓存中的stmt，用sql做key</span></span><br><span class="line">- (sqlite3_stmt *)_dbPrepareStmt:(<span class="built_in">NSString</span> *)sql &#123;</span><br><span class="line">    <span class="keyword">if</span> (![<span class="keyword">self</span> _dbCheck] || sql.length == <span class="number">0</span> || !_dbStmtCache) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    sqlite3_stmt *stmt = (sqlite3_stmt *)<span class="built_in">CFDictionaryGetValue</span>(_dbStmtCache, (__bridge <span class="keyword">const</span> <span class="keyword">void</span> *)(sql));</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (!stmt) &#123;</span><br><span class="line">        <span class="comment">// 如果stmt为空的话</span></span><br><span class="line">        <span class="keyword">int</span> result = sqlite3_prepare_v2(_db, sql.UTF8String, <span class="number">-1</span>, &amp;stmt, <span class="literal">NULL</span>);</span><br><span class="line">        <span class="keyword">if</span> (result != SQLITE_OK) &#123;</span><br><span class="line">            <span class="comment">// 如果不成功</span></span><br><span class="line">            <span class="built_in">NSLog</span>(<span class="string">@"创建stmt失败"</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NULL</span>; <span class="comment">// 返回空</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">CFDictionarySetValue</span>(_dbStmtCache, sql.UTF8String, stmt); <span class="comment">// 缓存起来，都是同一个stmt，每次创建的话，会大量消耗资源，因此这里做了缓存</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        sqlite3_reset(stmt);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> stmt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>存储方式有三个模式</p>
+<ul>
+<li>文件</li>
+<li>sqlite3</li>
+<li>混合 // 混合的情况有个阈值，大于阈值，则存文件 </li>
+</ul>
+</li>
+<li><p>db sqlite3的使用细节</p>
+<ul>
+<li>sqlite3_stmt 操作数据的辅助数据接口，用于执行sql，并且返回结果</li>
+<li>stmt 也进行做了缓存，因为这个sql会重复不定期使用</li>
+</ul>
+</li>
+<li><p>优化: 可以升级最新版本的sqlite3，以此提高效率</p>
+</li>
+</ul>
+<hr>
+<h4 id="YYCache"><a href="#YYCache" class="headerlink" title="YYCache"></a>YYCache</h4><p>提供了增删改查的API，底下调用的YYMemoryCache和YYDiskCache，封装了一些基本逻辑。在save的时候，会保存到YYMemoryCache和YYDiskCache，读取的时候，会优先读取YYMemoryCache实现高速缓存，再读取低速缓存。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><blockquote>
+<p>实际上在看的时候，下面这位大佬写得更加清晰的，之所以我按自己的理解再写一次，也是为了让自己更好的研究，根据所有学习技巧来说，最重要的还是应用，因此有了这篇文章，希望之后能逐渐写出一些更好blog</p>
+</blockquote>
+<p>从 YYCache 源码 Get 到如何设计一个优秀的缓存 - <a href="https://juejin.im/post/59f6e3b051882534af253d4a" target="_blank" rel="noopener">https://juejin.im/post/59f6e3b051882534af253d4a</a></p>
+<p>ibireme blog - <a href="http://blog.ibireme.com/category/tec/ios-tec/" target="_blank" rel="noopener">http://blog.ibireme.com/category/tec/ios-tec/</a></p>
+</article><!-- lincense--><div class="license-wrapper"><p> <span>Author:  </span><a href="http://linwenbang.github.io">bangben</a></p><p> <span>Link:  </span><a href="http://linwenbang.github.io/2018/08/28/YYCache深入学习/">http://linwenbang.github.io/2018/08/28/YYCache深入学习/</a></p><p> <span>Copyright:  </span><span>All articles in this blog are licensed under <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/3.0">CC BY-NC-SA 3.0</a> unless stating additionally.</span></p></div><div class="post-paginator"><a class="prevSlogan" href="/2018/08/28/YYDispatchQueuePool学习笔记/" title="YYDispatchQueuePool学习笔记"><span>< PreviousPost</span><br><span class="prevTitle">YYDispatchQueuePool学习笔记</span></a><a class="nextSlogan" href="/2016/06/23/flow流程试行/" title="根据项目需求制定简单的git flow流程试行"><span>NextPost ></span><br><span class="nextTitle">根据项目需求制定简单的git flow流程试行</span></a><div class="clear"></div></div><div id="comment"><div id="disqus_thread"></div><script>var unused = null;
+var disqus_config = function () {
+  this.page.url = 'http://linwenbang.github.io/2018/08/28/YYCache深入学习/';
+  this.page.identifier = '2018/08/28/YYCache深入学习/';
+  this.page.title = 'YYCache深入学习';
+}
+var d = document, s = d.createElement('script');
+s.src = "https://" + 'bangben-1' +".disqus.com/embed.js";
+s.setAttribute('data-timestamp', '' + +new Date());
+(d.head || d.body).appendChild(s);</script></div></section></article><footer id="cxo-footer-outer"><div id="cxo-footer-inner"><p class="footer-container"><span>Site by </span><a href="http://hexo.io"><span>Hexo</span></a><span> | theme </span><a href="https://github.com/Longlongyu/hexo-theme-Cxo"><span>Cxo</span></a></p><i class="fa fa-user"> </i><span id="busuanzi_value_site_uv"></span><span> | </span><i class="fa fa-eye"> </i><span id="busuanzi_value_site_pv"></span></div></footer><!-- catelog--><div class="toc-wrapper" style="top: 70vh;"><div class="toc-catalog"><i class="fa fa-list"> </i><span>CATALOG</span></div><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#简介"><span class="toc-number">1.</span> <span class="toc-text">简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#一个合理缓存应该有的设计"><span class="toc-number">2.</span> <span class="toc-text">一个合理缓存应该有的设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#基本设计思路"><span class="toc-number">3.</span> <span class="toc-text">基本设计思路</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#YYMemoryCache"><span class="toc-number">3.1.</span> <span class="toc-text">YYMemoryCache</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#YYDiskCache"><span class="toc-number">3.2.</span> <span class="toc-text">YYDiskCache</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#YYCache"><span class="toc-number">3.3.</span> <span class="toc-text">YYCache</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#参考"><span class="toc-number"></span> <span class="toc-text">参考</span></a></div><!-- top--><i class="fa fa-arrow-up close" id="go-up" aria-hidden="true"></i></body></html>
